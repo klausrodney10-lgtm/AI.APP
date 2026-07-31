@@ -1,8 +1,6 @@
 from urllib.request import urlopen
 import streamlit as st
-import os
-from dotenv import load_dotenv
-from openai import OpenAI
+
 
 st.set_page_config(page_title="Aura AI.", layout="wide")
 
@@ -43,17 +41,6 @@ if prompt:
         st.write(f"{prompt}")
     with st.chat_message("Chat Bot"):
         st.write(f"Hello {name}, I am Aura! Welcome to AI level 2.")
-else:
-    load_dotenv()
-    client = OpenAI(
-        base_url="https://models.github.ai/inference",
-        api_key=os.getenv("AI_TOKEN"),
-    )
-    r = client.chat.completions.create(
-        model="openai/gpt-4o-mini",
-        messages=[{"role": "user", "content": prompt}],
-    )
-    st.write(r.choices[0].message.content)
 
 
 
