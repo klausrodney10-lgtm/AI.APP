@@ -33,24 +33,23 @@ right.write("Creativity: 0,3")
 with st.chat_message("user"):
     st.write(f"Hello, I am Aura AI! Welcome to AI Level 2.")
     prompt = st.chat_input("Ask something here...")
-    response = urlopen("https://example.com")
-    data = response.read().decode("utf-8")
-    print(data)
-user_input = st.chat_input("Ask something here...")
-    accept_fils=True
-
-
-
-
-
-if prompt:
+    user_input = st.chat_message("Ask something here...")
+    accept_fils = True
+    file_type = ["pdf", "txt"]
+    if user_input:
+        prompt = user_input.text
+        prompt_file = user_input.file[0]
+if user_input:
     with st,chat_message("user"):
         st.write(f"{prompt}, {uploaded.name}")
     with st.chat_message("user"):
         st.write(f"{prompt}")
     with st.chat_message("Chat Bot"):
         st.write(f"Hello {name}, I am Aura! Welcome to AI level 2.")
+uploaded_files = st.file_uploader("Upload your notes", accept_multiple_files=True)
 
+if uploaded_files:
+    prompt_file = uploaded_files[0]
 else:
     load_dotenv()
     client = OpenAI(
