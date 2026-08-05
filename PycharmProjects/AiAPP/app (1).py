@@ -7,9 +7,9 @@ from doc_helper import read_file
 import chromadb
 
 db = chromadb.PersistentClient(path="./chroma_db")
-brain = db.get_or_create_collection("Aura")
-memory = db.get_or_create_collection("Aura_chat")
-SYSTEM_PROMPT = "You are Aura AI, you are here to help people with homework, studying and summerizing documents or texts,"
+brain = db.get_or_create_collection("Nova")
+memory = db.get_or_create_collection("Nova_chat")
+SYSTEM_PROMPT = "You are Nova AI, you are here to help people with homework, studying and summerizing documents or texts,"
 
 def shorten(text, limit=500):
     return text if len(text) <= limit else text[:limit] + " ... rest removed to keep it short"
@@ -73,10 +73,10 @@ with st.sidebar:
         st.session_state.messages = []
         st.rerun()
     if st.button("Forget memory"):
-        db.delete_collection("Aura_chat")
+        db.delete_collection("Nova_chat")
         st.rerun()
     if st.button("Forget all documents"):
-        db.delete_collection("Aura")
+        db.delete_collection("Nova")
         st.rerun()
 
 for old in st.session_state.messages:

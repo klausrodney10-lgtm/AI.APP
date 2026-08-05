@@ -7,10 +7,13 @@ from doc_helper import read_file
 import chromadb
 
 db = chromadb.PersistentClient(path="./chroma_db")
-brain = db.get_or_create_collection("Aura")
-memory = db.get_or_create_collection("Aura_chat")
+brain = db.get_or_create_collection("Nova")
+memory = db.get_or_create_collection("Nova_chat")
+
+
+
 THRESHOLD = 1.5
-SYSTEM_PROMPT = "You are Aura AI, you are here to help people with homework, studying and summerizing documents or texts,"
+SYSTEM_PROMPT = "You are Nova AI, a friendly and intelligent study companion. Your goal is to help students learn, not just give answers. Explain concepts clearly, use examples, and adapt your explanations to the student's level. Be encouraging, organized, and patient."
 
 def shorten(text, limit=500):
     return text if len(text) <= limit else text[:limit] + " ... rest removed to keep it short"
@@ -37,6 +40,7 @@ def store_document(file):
     prefix = file.name.replace(" ", "_")
     brain.add(
         documents=chunks,
+        metadatas=[{"source": file.name, "chunk": i} for i in range(len(chunks))],
         ids=[f"{prefix}_chunk{i}" for i in range(len(chunks))],
     )
     return len(text), len(chunks)
@@ -47,10 +51,10 @@ def remember_exchange(question, answer):
         documents=[f"Question: {question}\n Answer: {shorten(answer)}"],
         ids=[f"turn{memory.count()}"]
     )
-st.set_page_config(page_title="Aura AI🔥", page_icon="⚡", layout="wide")
+st.set_page_config(page_title="Nova AI🔥", page_icon="⚡", layout="wide")
 
-st.title("Welcome to Aura, our own AI model on the Web!")
-st.subheader("This is my first app")
+st.title("Welcome to Nova🌟, our own AI model on the Web!")
+st.subheader("Your AI study partner")
 
 if "messages" not in st.session_state:
     st.session_state["messages"] = []
@@ -60,12 +64,12 @@ with st.sidebar:
     with st.form("settings"):
         name = st.text_input("What is your name?")
         creativity = st.slider("Creativity:", 0.0, 1.0, 0.5)
+        THRESHOLD = st.slider("Threshold for accuracy", 0.0, 3.0, 1.5)
         remember_documents = st.slider("How many chunks to remember", 0, 10, 3)
         remember = st.slider("Recent turns to keep", 0, 10, 3)
         recall = st.slider("Old exchanges to look up", 0, 10, 3)
         note_only = st.checkbox("Only answer using notes")
         saved = st.form_submit_button("Save")
-
     if saved:
         st.write(f"{name} saved sources: creativity: {creativity}")
     st.caption(f"In memory: {brain.count()} chunks")
@@ -76,10 +80,10 @@ with st.sidebar:
         st.session_state.messages = []
         st.rerun()
     if st.button("Forget the memory"):
-        db.delete_collection("Aura_chat")
+        db.delete_collection("Nova_chat")
         st.rerun()
     if st.button("Forget all of the documents"):
-        db.delete_collection("Aura")
+        db.delete_collection("Nova")
         st.rerun()
 
 for old in st.session_state.messages:
@@ -121,12 +125,18 @@ if user_input:
         else:
             #1. Anything that is relevant to the uploaded docs:
             notes = ""
-            docs, dists, good = [], [], []
+            docs, dists, good, metas, user_sources = [], [], [], [], []
             if brain.count() > 0:
                 hits = brain.query(query_texts=[prompt], n_results=remember_documents)
                 docs = hits["documents"][0]
                 dists = hits["distances"][0]
-                good= [d for d, s in zip(docs, dists) if s < THRESHOLD]
+                metas= hits["metadatas"][0]
+                for d, s, m in zip(docs, dists, metas):
+                    if s< THRESHOLD:
+                        good.append(d)
+                        if m is None:
+                            m = {}
+                        user_sources.append(f"{m.get('source'), ('Unknown')} (chunks {m.get('chunk', '?')})")
                 notes = "\n\n".join(docs)
 
             #2. Anything that is relevant to the OLD conversation
@@ -136,7 +146,8 @@ if user_input:
                 found = memory.query(query_texts=[prompt], n_results=recall)
                 old_docs = found["documents"][0]
                 old_dists = found["distances"][0]
-                old_good = [d for d, s in zip(old_docs, old_dists) if s < THRESHOLD]
+                old_metas = found["metadatas"][0]
+                old_good = [d for d, s, m in zip(old_docs, old_dists, found["metadatas"][0]) if s < THRESHOLD]
                 recalled = "\n\n".join(old_docs)
 
             if notes or recalled:
@@ -153,13 +164,23 @@ if user_input:
             with st.expander("What I looked up"):
                 st.caption("From your documents")
                 if docs:
-                    for d, s in zip(old_docs, old_dists):
+                    for d, s, m in zip(docs, dists, metas):
                         mark = "kept" if s < THRESHOLD else "discarded"
-                        st.text(f"{s:.3f} {mark} {d[:70]}")
+                        if m is None:
+                            m = {}
+                        st.text(f"{s:.3f} {mark} {m.get('source'), m.get('Unknown')} {d[:70]}")
                 else:
                     st.text("nothing found")
                 st.text(shorten(notes, 800) or "nothing")
 
+                if docs:
+                    for d, s, m in zip(old_docs, old_dists, old_metas):
+                        if m is None:
+                            m = {}
+                        mark = "kept" if s < THRESHOLD else "discarded"
+                        st.text(f"{s:.3f} {mark} {m.get('source'), m.get('Unknown')} {d[:70]}")
+                else:
+                    st.text("nothing found")
                 st.caption("From earlier in our conversation")
                 st.text(shorten(recalled, 800) or "nothing")
 
@@ -200,6 +221,8 @@ if user_input:
 
                 answer = r.choices[0].message.content
                 st.write(answer)
+                if user_sources:
+                    st.caption("Sources:".join(sorted(set(user_sources))))
 
         remember_exchange(prompt, answer)
     st.session_state.messages.append({"role": "assistant", "content": answer})
