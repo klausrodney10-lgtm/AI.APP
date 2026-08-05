@@ -9,13 +9,12 @@ import chromadb
 db = chromadb.PersistentClient(path="./chroma_db")
 brain = db.get_or_create_collection("Aura")
 memory = db.get_or_create_collection("Aura_chat")
-THRESHOLD = 1.7
 SYSTEM_PROMPT = "You are Aura AI, you are here to help people with homework, studying and summerizing documents or texts,"
 
 def shorten(text, limit=500):
     return text if len(text) <= limit else text[:limit] + " ... rest removed to keep it short"
 
-def chunk_by_sentence(text, max_size = 700):
+def chunk_by_sentence(text, max_size = 400):
     sentences = text.split(". ")
     chunks, current = [], ""
     for sentence in sentences:
@@ -59,26 +58,24 @@ with st.sidebar:
     st.header("Settings tab")
     with st.form("settings"):
         name = st.text_input("What is your name?")
+        sources = st.multiselect("Mood:", ["My first app", "My second app"])
         creativity = st.slider("Creativity:", 0.0, 1.0, 0.5)
-        remember_documents = st.slider("How many chunks to remember", 0, 10, 3)
         remember = st.slider("Recent turns to keep", 0, 10, 3)
         recall = st.slider("Old exchanges to look up", 0, 10, 3)
-        note_only = st.checkbox("Only answer using notes")
         saved = st.form_submit_button("Save")
-
     if saved:
-        st.write(f"{name} saved sources: creativity: {creativity}")
+        st.write(f"{name} saved sources: {sources} and creativity: {creativity}")
     st.caption(f"In memory: {brain.count()} chunks")
     st.caption(f"Long term memory: {memory.count()} exchanges")
     st.caption(f"On screen: {len(st.session_state.messages)} messages")
 
-    if st.button("Clear the chat"):
+    if st.button("Clear chat"):
         st.session_state.messages = []
         st.rerun()
-    if st.button("Forget the memory"):
+    if st.button("Forget memory"):
         db.delete_collection("Aura_chat")
         st.rerun()
-    if st.button("Forget all of the documents"):
+    if st.button("Forget all documents"):
         db.delete_collection("Aura")
         st.rerun()
 
@@ -121,12 +118,11 @@ if user_input:
         else:
             #1. Anything that is relevant to the uploaded docs:
             notes = ""
-            docs, dists, good = [], [], []
+            docs, dist = [], []
             if brain.count() > 0:
-                hits = brain.query(query_texts=[prompt], n_results=remember_documents)
+                hits = brain.query(query_texts=[prompt], n_results=5)
                 docs = hits["documents"][0]
-                dists = hits["distances"][0]
-                good= [d for d, s in zip(docs, dists) if s < THRESHOLD]
+                dist = hits["documents"][0]
                 notes = "\n\n".join(docs)
 
             #2. Anything that is relevant to the OLD conversation
@@ -148,34 +144,15 @@ if user_input:
 
             with st.expander("What I looked up"):
                 st.caption("From your documents")
-                if docs:
-                    for d, s in zip(docs, dists):
-                        mark = "kept" if s < THRESHOLD else "discarded"
-                        st.text(f"{s:.3f} {mark} {d[:70]}")
-                else:
-                    st.text("nothing found")
                 st.text(shorten(notes, 800) or "nothing")
-
                 st.caption("From earlier in our conversation")
                 st.text(shorten(recalled, 800) or "nothing")
 
-                st.caption("Recent messages I can still see")
-                recents= st.session_state.messages[:-1][-(remember * 2):]
-                if recents:
-                    for m in recents:
-                        st.text(f"{m['role']}: {shorten(m['content'], 800)}")
-
             load_dotenv()
-
-            api_key = os.getenv("AI_TOKEN")
-
-            if not api_key:
-                st.error("AI_TOKEN not found in .env")
-                st.stop()
             client = OpenAI(
                 base_url="https://api.groq.com/openai/v1",
-                api_key=api_key,
-                )
+                api_key = os.environ.get("AI_TOKEN") or st.secrets["AI_TOKEN"],
+            )
             #3. The last few turns, word for word bu trimmed
             messages = [{"role": "system", "content": SYSTEM_PROMPT}]
             past = st.session_state.messages[:-1]
@@ -183,20 +160,14 @@ if user_input:
                 for m in past[-(remember * 2):]:
                     messages.append({"role": m["role"], "content": shorten(m["content"])})
             messages.append({"role": "user", "content": full_prompt})
-            if brain.count() >  0 and not good and not recalled and note_only:
-                answer = "I don't know what you mean"
-                st.write(answer)
-            else:
-                r = client.chat.completions.create(
-                    model="llama-3.3-70b-versatile",
-                    messages=messages,
-                    temperature=creativity,
-                )
 
-
-                answer = r.choices[0].message.content
-                st.write(answer)
+        r = client.chat.completions.create(
+                model="llama-3.3-70b-versatile",
+                temperature=creativity,
+                messages=messages,
+        )
+        answer = r.choices[0].message.content
+        st.write(answer)
 
         remember_exchange(prompt, answer)
     st.session_state.messages.append({"role": "assistant", "content": answer})
-
