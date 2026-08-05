@@ -148,7 +148,7 @@ if user_input:
             load_dotenv()
             client = OpenAI(
                 base_url="https://api.groq.com/openai/v1",
-                api_key = os.environ.get("AI_TOKEN") or st.secrets["AI_TOKEN"],
+                api_key = os.environ.get("AI_TOKEN")
             )
             #3. The last few turns, word for word bu trimmed
             messages = [{"role": "system", "content": SYSTEM_PROMPT}]
