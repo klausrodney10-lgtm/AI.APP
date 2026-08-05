@@ -9,7 +9,7 @@ import chromadb
 db = chromadb.PersistentClient(path="./chroma_db")
 brain = db.get_or_create_collection("Aura")
 memory = db.get_or_create_collection("Aura_chat")
-THRESHOLD = 1.7
+THRESHOLD = 1.5
 SYSTEM_PROMPT = "You are Aura AI, you are here to help people with homework, studying and summerizing documents or texts,"
 
 def shorten(text, limit=500):
@@ -47,7 +47,7 @@ def remember_exchange(question, answer):
         documents=[f"Question: {question}\n Answer: {shorten(answer)}"],
         ids=[f"turn{memory.count()}"]
     )
-st.set_page_config(page_title="Aura AI", page_icon="⚡", layout="wide")
+st.set_page_config(page_title="Aura AI🔥", page_icon="⚡", layout="wide")
 
 st.title("Welcome to Aura, our own AI model on the Web!")
 st.subheader("This is my first app")
@@ -131,9 +131,13 @@ if user_input:
 
             #2. Anything that is relevant to the OLD conversation
             recalled = ""
+            old_docs, old_dists, old_good = [], [], []
             if recall > 0 and memory.count() > remember:
                 found = memory.query(query_texts=[prompt], n_results=recall)
-                recalled = "\n\n".join(found["documents"][0])
+                old_docs = found["documents"][0]
+                old_dists = found["distances"][0]
+                old_good = [d for d, s in zip(old_docs, old_dists) if s < THRESHOLD]
+                recalled = "\n\n".join(old_docs)
 
             if notes or recalled:
                 full_prompt = (f"Answer using only the notes below. "
@@ -149,7 +153,7 @@ if user_input:
             with st.expander("What I looked up"):
                 st.caption("From your documents")
                 if docs:
-                    for d, s in zip(docs, dists):
+                    for d, s in zip(old_docs, old_dists):
                         mark = "kept" if s < THRESHOLD else "discarded"
                         st.text(f"{s:.3f} {mark} {d[:70]}")
                 else:
@@ -176,7 +180,7 @@ if user_input:
                 base_url="https://api.groq.com/openai/v1",
                 api_key=api_key,
                 )
-            #3. The last few turns, word for word bu trimmed
+            #3. The last few turns, word for word but trimmed
             messages = [{"role": "system", "content": SYSTEM_PROMPT}]
             past = st.session_state.messages[:-1]
             if remember > 0:
