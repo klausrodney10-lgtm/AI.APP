@@ -58,24 +58,24 @@ with st.sidebar:
     st.header("Settings tab")
     with st.form("settings"):
         name = st.text_input("What is your name?")
+        sources = st.multiselect("Mood:", ["My first app", "My second app"])
         creativity = st.slider("Creativity:", 0.0, 1.0, 0.5)
         remember = st.slider("Recent turns to keep", 0, 10, 3)
         recall = st.slider("Old exchanges to look up", 0, 10, 3)
         saved = st.form_submit_button("Save")
-
     if saved:
-        st.write(f"{name} saved sources: creativity: {creativity}")
+        st.write(f"{name} saved sources: {sources} and creativity: {creativity}")
     st.caption(f"In memory: {brain.count()} chunks")
     st.caption(f"Long term memory: {memory.count()} exchanges")
     st.caption(f"On screen: {len(st.session_state.messages)} messages")
 
-    if st.button("Clear the chat"):
+    if st.button("Clear chat"):
         st.session_state.messages = []
         st.rerun()
-    if st.button("Forget the memory"):
+    if st.button("Forget memory"):
         db.delete_collection("Aura_chat")
         st.rerun()
-    if st.button("Forget all of the documents"):
+    if st.button("Forget all documents"):
         db.delete_collection("Aura")
         st.rerun()
 
@@ -118,9 +118,12 @@ if user_input:
         else:
             #1. Anything that is relevant to the uploaded docs:
             notes = ""
+            docs, dist = [], []
             if brain.count() > 0:
                 hits = brain.query(query_texts=[prompt], n_results=5)
-                notes = "\n\n".join(hits["documents"][0])
+                docs = hits["documents"][0]
+                dist = hits["documents"][0]
+                notes = "\n\n".join(docs)
 
             #2. Anything that is relevant to the OLD conversation
             recalled = ""
@@ -168,4 +171,3 @@ if user_input:
 
         remember_exchange(prompt, answer)
     st.session_state.messages.append({"role": "assistant", "content": answer})
-
