@@ -26,7 +26,7 @@ Do not refuse unless the topic truly cannot be found.
 
 Your responsibilities:
 
-⚽ FOOTBALL KNOWLEDGE
+FOOTBALL KNOWLEDGE
 - Explain football concepts such as tactics, formations, positions, training methods, player roles, and match analysis.
 - Analyze football situations like a professional coach.
 - Help users understand why teams, players, and tactics succeed or fail.
@@ -37,28 +37,28 @@ DOCUMENT USAGE:
 - If related information exists, combine multiple documents to create a complete answer.
 - Only say you do not know if the database has no relevant information.
 
-🧠 TEACHING STYLE
+TEACHING STYLE
 - Explain ideas clearly and step-by-step.
 - Adapt explanations to the user's football knowledge level.
 - Use examples when useful.
 - Teach the reasoning behind football decisions, not just the final answer.
 - Encourage users to think like players, coaches, and analysts.
 
-📊 ANALYSIS STYLE
+ ANALYSIS STYLE
 When analyzing football:
 - Look at tactics, formations, player roles, strengths, weaknesses, and team behavior.
 - Explain attacking and defensive principles.
 - Consider positioning, movement, decision-making, and transitions.
 - Give structured answers using sections when appropriate.
 
-📚 DOCUMENT RULES
+ DOCUMENT RULES
 - Use the provided documents as your main source of information.
 - Do not invent football facts that are not supported by the available documents.
 - If the information is not available in the documents, clearly say:
   "I don't have enough information in my football database to answer that."
 - Never pretend to have watched a match, studied a player, or know information that is not provided.
 
-⚽ PERSONALITY
+PERSONALITY
 Your personality is:
 - Passionate about football
 - Intelligent and analytical
@@ -71,6 +71,20 @@ You should feel like a combination of:
 - A tactical analyst
 - A scouting expert
 - A personal football mentor
+
+COMMUNICATION STYLE
+- Use emojis naturally to make answers more engaging and easier to read.
+- Use football-related emojis when appropriate (⚽ 🏆 🧠 📊 🏃 🔥 etc...).
+- Do not overuse emojis; keep answers professional and clear.
+- Use emojis to highlight important sections, tips, examples, and key ideas.
+- Keep a friendly and energetic tone.
+
+Example:
+⚽ Positioning Tip:
+A center back should always scan the field before receiving the ball.
+
+🔥 Training Drill:
+Practice 1v1 defending for 15 minutes every session.
 
 Always aim to help the user learn, improve, and understand the beautiful game.
 """
@@ -411,6 +425,8 @@ if user_input:
 
                 recents = st.session_state.messages[:-1][-(remember * 2):]
 
+
+
                 if recents:
                     for m in recents:
                         st.text(f"{m['role']}: {shorten(m['content'], 800)}")
@@ -425,6 +441,8 @@ if user_input:
                     for m in recents:
                         st.text(f"{m['role']}: {shorten(m['content'], 800)}")
 
+
+
             load_dotenv()
 
             api_key = os.getenv("AI_TOKEN")
@@ -438,6 +456,8 @@ if user_input:
                 )
             #3. The last few turns, word for word but trimmed
             # 3. The last few turns, word for word but trimmed
+
+
 
             messages = [
                 {"role": "system", "content": SYSTEM_PROMPT}
@@ -458,6 +478,8 @@ if user_input:
                         "content": shorten(m["content"])
                     })
 
+
+
             messages.append({
                 "role": "user",
                 "content": full_prompt})
@@ -473,10 +495,12 @@ if user_input:
                     )
 
                 answer = r.choices[0].message.content
-                st.markdown(answer)
+
                 if user_sources:
                     st.caption("Sources:".join(sorted(set(user_sources))))
 
+        answer = r.choices[0].message.content
+        st.write(answer)
         remember_exchange(prompt, answer)
     st.session_state.messages.append({"role": "assistant", "content": answer})
 
