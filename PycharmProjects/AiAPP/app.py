@@ -163,25 +163,41 @@ if user_input:
 
             with st.expander("What I looked up"):
                 st.caption("From your documents")
+
                 if docs:
                     for d, s, m in zip(docs, dists, metas):
                         mark = "kept" if s < THRESHOLD else "discarded"
+
                         if m is None:
                             m = {}
-                        st.text(f"{s:.3f} {mark} {m.get('source'), m.get('Unknown')} {d[:70]}")
+
+                        st.text(f"{s:.3f} {mark} {m.get('source', 'Unknown')} {d[:70]}")
                 else:
                     st.text("nothing found")
+
                 st.text(shorten(notes, 800) or "nothing")
 
-                if docs:
-                    for d, s, m in zip(old_docs, old_dists, old_metas):
-                        if m is None:
-                            m = {}
+                st.caption("From earlier in our conversation")
+
+                if old_docs:
+                    for d, s in zip(old_docs, old_dists):
                         mark = "kept" if s < THRESHOLD else "discarded"
-                        st.text(f"{s:.3f} {mark} {m.get('source'), m.get('Unknown')} {d[:70]}")
+                        st.text(f"{s:.3f} {mark} {d[:70]}")
                 else:
                     st.text("nothing found")
-                st.caption("From earlier in our conversation")
+
+                st.text(shorten(recalled, 800) or "nothing")
+
+                st.caption("Recent messages I can still see")
+
+                recents = st.session_state.messages[:-1][-(remember * 2):]
+
+                if recents:
+                    for m in recents:
+                        st.text(f"{m['role']}: {shorten(m['content'], 800)}")
+                else:
+                    st.text("nothing found")
+
                 st.text(shorten(recalled, 800) or "nothing")
 
                 st.caption("Recent messages I can still see")
