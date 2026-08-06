@@ -5,13 +5,14 @@ from dotenv import load_dotenv
 from openai import OpenAI
 from doc_helper import read_file
 import chromadb
+import random
 
 db = chromadb.PersistentClient(path="./chroma_db")
 brain = db.get_or_create_collection("Nova")
 memory = db.get_or_create_collection("Nova_chat")
 
 
-THRESHOLD = 1.5
+THRESHOLD = 3.5
 SYSTEM_PROMPT = """
 You are Nova AI, an intelligent, funny and nice football learning and analysis companion.
 
@@ -19,12 +20,22 @@ Your mission is to help users understand football at a deeper level using the fo
 
 You are not just an answer machine. You are a football coach, analyst, and teacher.
 
+When information exists in the documents, always use it.
+Explain using examples from the database.
+Do not refuse unless the topic truly cannot be found.
+
 Your responsibilities:
 
 ⚽ FOOTBALL KNOWLEDGE
 - Explain football concepts such as tactics, formations, positions, training methods, player roles, and match analysis.
 - Analyze football situations like a professional coach.
 - Help users understand why teams, players, and tactics succeed or fail.
+
+DOCUMENT USAGE:
+- Always search the football database before answering.
+- Use examples from player profiles, tactics, and training drills.
+- If related information exists, combine multiple documents to create a complete answer.
+- Only say you do not know if the database has no relevant information.
 
 🧠 TEACHING STYLE
 - Explain ideas clearly and step-by-step.
@@ -140,27 +151,146 @@ def remember_exchange(question, answer):
         documents=[f"Question: {question}\n Answer: {shorten(answer)}"],
         ids=[f"turn{memory.count()}"]
     )
+
+load_nova_knowledge()
+
 st.set_page_config(page_title="Nova AI🔥", page_icon="⚡", layout="wide")
 
-st.title("Welcome to Nova🌟, our own AI model on the Web!")
-st.subheader("Your AI football partner")
+st.title("⚽ Nova AI")
+st.subheader("Your personal football intelligence assistant")
+
+
+st.markdown("""
+### What can Nova do?
+
+⚽ Analyze tactics  
+📚 Learn from football documents  
+🧠 Explain player roles  
+📊 Break down formations  
+🏆 Help you improve your football IQ
+""")
+
+# Nova statistics dashboard
+col1, col2 = st.columns(2)
+
+with col1:
+    st.metric(
+        "⚽ Football Knowledge",
+        f"{brain.count()} chunks"
+    )
+
+with col2:
+    st.metric(
+        "🧠 Memories",
+        f"{memory.count()} exchanges"
+    )
+
+
+tips = [
+    "Great midfielders scan before receiving the ball.",
+    "Space is created by movement, not only passing.",
+    "The first defender is the striker.",
+    "A good player looks around before they receive the ball.",
+    "Defending starts with controlling space, not just tackling.",
+    "The best teams create advantages before they attack.",
+    "Movement without the ball creates opportunities.",
+    "A player's positioning is often more important than speed."
+]
+
+st.success(
+    "🌟 Nova Football Insight\n\n" + random.choice(tips))
 
 if "messages" not in st.session_state:
     st.session_state["messages"] = []
 
 with st.sidebar:
-    st.header("Settings tab")
-    with st.form("settings"):
-        name = st.text_input("What is your name?")
-        creativity = st.slider("Creativity:", 0.0, 1.0, 0.5)
-        THRESHOLD = st.slider("Threshold for accuracy", 0.0, 3.0, 1.5)
-        remember_documents = st.slider("How many chunks to remember", 0, 10, 3)
-        remember = st.slider("Recent turns to keep", 0, 10, 3)
-        recall = st.slider("Old exchanges to look up", 0, 10, 3)
-        note_only = st.checkbox("Only answer using notes")
-        saved = st.form_submit_button("Save")
-    if saved:
-        st.write(f"{name} saved sources: creativity: {creativity}")
+    st.title("⚽ Nova Control Center")
+
+    st.markdown("---")
+
+    st.subheader("👤 Player Profile")
+
+    name = st.text_input(
+        "Your name",
+        placeholder="Enter your name"
+    )
+
+    level = st.select_slider(
+        "Football level",
+        options=[
+            "Beginner",
+            "Intermediate",
+            "Advanced",
+            "Professional"
+        ]
+    )
+
+    st.markdown("---")
+
+    st.subheader("🎯 Nova Mode")
+
+    mode = st.selectbox(
+        "Choose Nova's role:",
+        [
+            "⚽ Coach Mode",
+            "📊 Analyst Mode",
+            "🔎 Scout Mode",
+            "🏃 Player Development Mode"
+        ]
+    )
+
+    st.markdown("---")
+
+    st.subheader("🧠 Intelligence")
+
+    creativity = st.slider(
+        "Creativity",
+        0.0,
+        1.0,
+        0.5
+    )
+
+    THRESHOLD = st.slider(
+        "Accuracy",
+        0.0,
+        3.0,
+        1.5
+    )
+
+    remember_documents = st.slider(
+        "Documents used",
+        0,
+        10,
+        3
+    )
+
+    remember = st.slider(
+        "Conversation memory",
+        0,
+        10,
+        3
+    )
+
+    recall = st.slider(
+        "Old analysis memory",
+        0,
+        10,
+        3
+    )
+
+    note_only = st.checkbox(
+        "📚 Only use football database"
+    )
+    mode = st.selectbox(
+            "Choose your mode:",
+            [
+                "⚽ Coach Mode",
+                "📊 Analyst Mode",
+                "🔎 Scout Mode",
+                "🏃 Player Development Mode"
+            ]
+        )
+
     st.caption(f"In memory: {brain.count()} chunks")
     st.caption(f"Long term memory: {memory.count()} exchanges")
     st.caption(f"On screen: {len(st.session_state.messages)} messages")
@@ -176,7 +306,7 @@ with st.sidebar:
         st.rerun()
 
 for old in st.session_state.messages:
-    with st.chat_message(old["role"]):
+    with st.chat_message(old["role"], avatar="⚽"):
         st.markdown(old["content"])
 
 user_input = st.chat_input(
@@ -202,7 +332,7 @@ if user_input:
     st.session_state.messages.append(
         {"role": "user", "content": prompt if prompt else f"attached: {prompt_file.name}"}
     )
-    with st.chat_message("assistant"):
+    with st.chat_message("assistant", avatar="🌟"):
         if prompt == "Cat Fact":
             r = requests.get("https://catfact.ninja/fact")
             fact = r.json()["fact"]
@@ -307,25 +437,43 @@ if user_input:
                 api_key=api_key,
                 )
             #3. The last few turns, word for word but trimmed
-            messages = [{"role": "system", "content": SYSTEM_PROMPT}]
+            # 3. The last few turns, word for word but trimmed
+
+            messages = [
+                {"role": "system", "content": SYSTEM_PROMPT}
+            ]
+
+            # Add Nova's selected football personality mode
+            messages.append({
+                "role": "system",
+                "content": f"You are currently in {mode}. Adapt your answers to this style."
+            })
+
             past = st.session_state.messages[:-1]
+
             if remember > 0:
                 for m in past[-(remember * 2):]:
-                    messages.append({"role": m["role"], "content": shorten(m["content"])})
-            messages.append({"role": "user", "content": full_prompt})
+                    messages.append({
+                        "role": m["role"],
+                        "content": shorten(m["content"])
+                    })
+
+            messages.append({
+                "role": "user",
+                "content": full_prompt})
             if brain.count() >  0 and not good and not recalled and note_only:
                 answer = "I don't know what you mean"
                 st.write(answer)
             else:
-                r = client.chat.completions.create(
-                    model="llama-3.3-70b-versatile",
-                    messages=messages,
-                    temperature=creativity,
-                )
-
+                with st.spinner("Nova is analyzing the match... ⚽"):
+                    r = client.chat.completions.create(
+                        model="llama-3.3-70b-versatile",
+                        messages=messages,
+                        temperature=creativity,
+                    )
 
                 answer = r.choices[0].message.content
-                st.write(answer)
+                st.markdown(answer)
                 if user_sources:
                     st.caption("Sources:".join(sorted(set(user_sources))))
 
