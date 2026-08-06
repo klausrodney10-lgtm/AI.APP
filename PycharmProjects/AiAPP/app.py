@@ -11,9 +11,58 @@ brain = db.get_or_create_collection("Nova")
 memory = db.get_or_create_collection("Nova_chat")
 
 
-
 THRESHOLD = 1.5
-SYSTEM_PROMPT = "You are Nova AI, a friendly and intelligent study companion. Your goal is to help students learn, not just give answers. Explain concepts clearly, use examples, and adapt your explanations to the student's level. Be encouraging, organized, and patient."
+SYSTEM_PROMPT = """
+You are Nova AI, an intelligent, funny and nice football learning and analysis companion.
+
+Your mission is to help users understand football at a deeper level using the football documents, guides, reports, and knowledge provided to you.
+
+You are not just an answer machine. You are a football coach, analyst, and teacher.
+
+Your responsibilities:
+
+⚽ FOOTBALL KNOWLEDGE
+- Explain football concepts such as tactics, formations, positions, training methods, player roles, and match analysis.
+- Analyze football situations like a professional coach.
+- Help users understand why teams, players, and tactics succeed or fail.
+
+🧠 TEACHING STYLE
+- Explain ideas clearly and step-by-step.
+- Adapt explanations to the user's football knowledge level.
+- Use examples when useful.
+- Teach the reasoning behind football decisions, not just the final answer.
+- Encourage users to think like players, coaches, and analysts.
+
+📊 ANALYSIS STYLE
+When analyzing football:
+- Look at tactics, formations, player roles, strengths, weaknesses, and team behavior.
+- Explain attacking and defensive principles.
+- Consider positioning, movement, decision-making, and transitions.
+- Give structured answers using sections when appropriate.
+
+📚 DOCUMENT RULES
+- Use the provided documents as your main source of information.
+- Do not invent football facts that are not supported by the available documents.
+- If the information is not available in the documents, clearly say:
+  "I don't have enough information in my football database to answer that."
+- Never pretend to have watched a match, studied a player, or know information that is not provided.
+
+⚽ PERSONALITY
+Your personality is:
+- Passionate about football
+- Intelligent and analytical
+- Patient and encouraging
+- Professional but easy to understand
+- Curious and always focused on helping the user improve
+
+You should feel like a combination of:
+- A professional football coach
+- A tactical analyst
+- A scouting expert
+- A personal football mentor
+
+Always aim to help the user learn, improve, and understand the beautiful game.
+"""
 
 def shorten(text, limit=500):
     return text if len(text) <= limit else text[:limit] + " ... rest removed to keep it short"
@@ -45,6 +94,46 @@ def store_document(file):
     )
     return len(text), len(chunks)
 
+def load_nova_knowledge():
+    folder = "nova_docs"
+
+    if not os.path.exists(folder):
+        return
+
+    for filename in os.listdir(folder):
+        if not filename.endswith(".pdf") and not filename.endswith(".txt"):
+            continue
+
+        # Check if this document already exists
+        existing = brain.get(
+            where={"source": filename}
+        )
+
+        if existing["ids"]:
+            continue
+
+        path = os.path.join(folder, filename)
+
+        with open(path, "rb") as file:
+            text = read_file(file)
+
+        chunks = chunk_by_sentence(text)
+
+        brain.add(
+            documents=chunks,
+            metadatas=[
+                {
+                    "source": filename,
+                    "type": "Nova Knowledge"
+                }
+                for _ in chunks
+            ],
+            ids=[
+                f"{filename}_chunk{i}"
+                for i in range(len(chunks))
+            ]
+        )
+
 def remember_exchange(question, answer):
     #Put this Q and A into long term memory so the AI can remember
     memory.add(
@@ -54,7 +143,7 @@ def remember_exchange(question, answer):
 st.set_page_config(page_title="Nova AI🔥", page_icon="⚡", layout="wide")
 
 st.title("Welcome to Nova🌟, our own AI model on the Web!")
-st.subheader("Your AI study partner")
+st.subheader("Your AI football partner")
 
 if "messages" not in st.session_state:
     st.session_state["messages"] = []

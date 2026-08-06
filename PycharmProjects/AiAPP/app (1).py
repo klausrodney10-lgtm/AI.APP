@@ -11,6 +11,9 @@ brain = db.get_or_create_collection("Nova")
 memory = db.get_or_create_collection("Nova_chat")
 SYSTEM_PROMPT = "You are Nova AI, you are here to help people with homework, studying and summerizing documents or texts,"
 
+-"after each fact, put the source number it came from, like source(1), when applicable"
+
+
 def shorten(text, limit=500):
     return text if len(text) <= limit else text[:limit] + " ... rest removed to keep it short"
 
@@ -169,5 +172,8 @@ if user_input:
         answer = r.choices[0].message.content
         st.write(answer)
 
+
         remember_exchange(prompt, answer)
+        if user_sources:
+            for i, src in
     st.session_state.messages.append({"role": "assistant", "content": answer})
