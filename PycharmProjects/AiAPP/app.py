@@ -267,8 +267,8 @@ with st.sidebar:
     THRESHOLD = st.slider(
         "Accuracy",
         0.0,
-        3.0,
-        1.5
+        5.0,
+        3.5
     )
 
     remember_documents = st.slider(
@@ -295,15 +295,8 @@ with st.sidebar:
     note_only = st.checkbox(
         "📚 Only use football database"
     )
-    mode = st.selectbox(
-            "Choose your mode:",
-            [
-                "⚽ Coach Mode",
-                "📊 Analyst Mode",
-                "🔎 Scout Mode",
-                "🏃 Player Development Mode"
-            ]
-        )
+
+
 
     st.caption(f"In memory: {brain.count()} chunks")
     st.caption(f"Long term memory: {memory.count()} exchanges")
@@ -478,29 +471,43 @@ if user_input:
                         "content": shorten(m["content"])
                     })
 
+                messages.append({
+                    "role": "user",
+                    "content": full_prompt
+                })
 
+                st.write("✅ Reached AI section")
 
-            messages.append({
-                "role": "user",
-                "content": full_prompt})
-            if brain.count() >  0 and not good and not recalled and note_only:
-                answer = "I don't know what you mean"
-                st.write(answer)
-            else:
-                with st.spinner("Nova is analyzing the match... ⚽"):
-                    r = client.chat.completions.create(
-                        model="llama-3.3-70b-versatile",
-                        messages=messages,
-                        temperature=creativity,
-                    )
+                with st.spinner("⚽ Nova is thinking..."):
+                    try:
+                        st.write("🔥 Sending request to Groq...")
 
-                answer = r.choices[0].message.content
+                        r = client.chat.completions.create(
+                            model="llama-3.3-70b-versatile",
+                            messages=messages,
+                            temperature=creativity,
+                        )
+
+                        st.write("✅ API worked")
+
+                        answer = r.choices[0].message.content
+
+                        st.write(answer)
+
+                    except Exception as e:
+                        answer = "⚽ Nova could not answer."
+                        st.error(e)
+                        st.write(answer)
 
                 if user_sources:
-                    st.caption("Sources:".join(sorted(set(user_sources))))
+                    st.caption("Sources: " + ", ".join(sorted(set(user_sources))))
 
-        answer = r.choices[0].message.content
-        st.write(answer)
-        remember_exchange(prompt, answer)
-    st.session_state.messages.append({"role": "assistant", "content": answer})
+        if "answer" in locals():
+            remember_exchange(prompt, answer)
 
+            st.session_state.messages.append(
+                {
+                    "role": "assistant",
+                    "content": answer
+                }
+            )
